@@ -1,0 +1,328 @@
+# Command Reference – Space Objects Data Platform
+
+This document collects the main commands used in this project:
+
+- Start / stop / rebuild the stack
+- Run individual services
+- Get shells into containers (tools, postgres, spark, kafka, dbt)
+- Run batch / streaming jobs
+- Basic validation commands
+
+All commands run from the **project root** (`space-objects-platform/`), unless stated otherwise.
+
+---
+
+## 1. Docker Compose – Core Lifecycle
+
+### 1.1 Start all core services
+
+```bash
+docker compose up -d --build
+Copy Code
+Starts:
+
+postgres
+zookeeper, kafka
+spark-master, spark-worker
+airflow-webserver, airflow-scheduler
+dbt
+prometheus, grafana
+tools (if defined)
+1.2 Stop everything
+docker compose down
+Copy Code
+1.3 Stop everything + remove volumes (reset DB, checkpoints, etc.)
+docker compose down -v
+Copy Code
+Use with care; this wipes Postgres data volumes.
+
+1.4 View service status
+docker compose ps
+Copy Code
+1.5 View logs for a specific service
+docker compose logs postgres
+docker compose logs kafka
+docker compose logs airflow-webserver
+Copy Code
+Follow logs:
+
+docker compose logs -f airflow-webserver
+Copy Code
+2. Key Services – Start / Shell Access
+2.1 Postgres
+Start (usually started with full stack):
+
+docker compose up -d postgres
+Copy Code
+Shell into container:
+
+docker compose exec postgres bash
+Copy Code
+Inside Postgres container:
+
+psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+# or explicitly:
+# psql -U space_user -d space_warehouse
+Copy Code
+2.2 Tools container (for psql / curl from inside network)
+Start:
+
+docker compose up -d tools
+Copy Code
+Shell:
+
+docker compose exec tools sh
+Copy Code
+Install psql client (first time):
+
+apk add --no-cache postgresql-client
+Copy Code
+Connect to Postgres from tools:
+
+psql -h postgres -U space_user -d space_warehouse
+Copy Code
+One-liner (from host):
+
+docker compose exec tools sh -c '
+  apk add --no-cache postgresql-client >/dev/null 2>&1 || true
+  psql -h postgres -U space_user -d space_warehouse
+'
+Copy Code
+2.3 Kafka
+Start (via full stack) or individually:
+
+docker compose up -d zookeeper kafka
+Copy Code
+Shell into kafka:
+
+docker compose exec kafka bash
+Copy Code
+Kafka topic commands (inside kafka):
+
+# list topics
+kafka-topics --bootstrap-server kafka:9092 --list
+
+# create topic
+kafka-topics --bootstrap-server kafka:9092 \
+  --create --topic test_topic --partitions 1 --replication-factor 1
+
+# produce messages
+kafka-console-producer --broker-list kafka:9092 --topic test_topic
+
+# consume messages
+kafka-console-consumer --bootstrap-server kafka:9092 \
+  --topic test_topic --from-beginning --max-messages 10
+Copy Code
+2.4 Spark (master)
+Start:
+
+docker compose up -d spark-master spark-worker
+Copy Code
+Shell into master:
+
+docker compose exec spark-master bash
+Copy Code
+Spark UI:
+
+http://localhost:8081 (mapped as 8081:8080)
+2.5 Airflow
+Start:
+
+2. Airflow
+2.1 Initialize Airflow database (first time only)
+docker compose run --rm airflow-webserver airflow db init
+Copy Code
+2.2 Create Airflow admin user
+docker compose run --rm airflow-webserver airflow users create \
+  --username admin \
+  --firstname Admin \
+  --lastname User \
+  --role Admin \
+  --email admin@example.com \
+  --password admin
+Copy Code
+(If your shell doesn’t like \, use a single line:)
+
+docker compose run --rm airflow-webserver airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin
+Copy Code
+2.3 Start Airflow services
+docker compose up -d airflow-webserver airflow-scheduler
+Copy Code
+2.4 Airflow UI
+http://localhost:8080
+Copy Code
+3. Postgres
+3.1 Connect via tools container
+Start tools (if not running):
+
+docker compose up -d tools
+Copy Code
+Connect:
+
+docker compose exec tools sh -c '
+  apk add --no-cache postgresql-client >/dev/null 2>&1 || true
+  echo "Connecting to Postgres at ${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}, db=${POSTGRES_DB:-space_warehouse}, user=${POSTGRES_USER:-space_user}"
+  psql -h "${POSTGRES_HOST:-postgres}" \
+       -p "${POSTGRES_PORT:-5432}" \
+       -U "${POSTGRES_USER:-space_user}" \
+       -d "${POSTGRES_DB:-space_warehouse}"
+'
+Copy Code
+3.2 Connect directly via postgres container
+docker compose exec postgres bash
+psql -U space_user -d space_warehouse
+Copy Code
+3.3 Quick inspection commands (inside psql)
+\dn
+\dt bronze.*
+\dt silver.*
+\dt meta.*
+SELECT * FROM meta.pipeline_run ORDER BY start_time DESC LIMIT 10;
+Copy Code
+4. Kafka
+4.1 List topics
+docker exec -it kafka bash
+kafka-topics --bootstrap-server kafka:9092 --list
+Copy Code
+4.2 Create test topic
+kafka-topics --bootstrap-server kafka:9092 \
+  --create --topic test_topic --partitions 1 --replication-factor 1
+Copy Code
+4.3 Produce test messages
+kafka-console-producer --broker-list kafka:9092 --topic test_topic
+# type messages, then Ctrl+C to exit
+Copy Code
+4.4 Consume messages
+kafka-console-consumer --bootstrap-server kafka:9092 \
+  --topic test_topic --from-beginning --max-messages 10
+Copy Code
+5. Spark
+5.1 Spark master UI
+http://localhost:8081
+Copy Code
+(Assuming spark-master ports mapping: 8081:8080.)
+
+5.2 Spark ↔ Postgres connectivity test
+Inside spark-master:
+
+docker exec -it spark-master bash
+
+spark-submit \
+  --master spark://spark-master:7077 \
+  --packages org.postgresql:postgresql:42.7.3 \
+  /opt/bitnami/spark/jobs/common/test_spark_connectivity.py
+Copy Code
+6. Batch Ingestion
+6.1 Build ingestion images
+docker compose build ingestion nasa-neo-batch celestrak-batch
+Copy Code
+6.2 Run NASA NEO batch ingestion
+docker compose run --rm nasa-neo-batch
+Copy Code
+6.3 Run CelesTrak SATCAT batch ingestion
+docker compose run --rm celestrak-batch
+Copy Code
+6.4 Verify batch ingestion in Postgres
+psql -h postgres -U space_user -d space_warehouse -c \
+  "SELECT pipeline_name, start_time, status, records_processed
+   FROM meta.pipeline_run
+   ORDER BY start_time DESC
+   LIMIT 10;"
+
+psql -h postgres -U space_user -d space_warehouse -c \
+  "SELECT COUNT(*) FROM bronze.nasa_neo_event_raw;"
+
+psql -h postgres -U space_user -d space_warehouse -c \
+  "SELECT COUNT(*) FROM bronze.celestrak_satcat_raw;"
+Copy Code
+7. Streaming – Producers
+7.1 Build images (if not already)
+docker compose build ingestion nasa-neo-stream celestrak-stream
+Copy Code
+7.2 Run NASA NEO streaming producer
+docker compose up nasa-neo-stream
+Copy Code
+7.3 Run CelesTrak streaming producer
+docker compose up celestrak-stream
+Copy Code
+7.4 Inspect streaming messages in Kafka
+docker exec -it kafka bash
+
+kafka-console-consumer --bootstrap-server kafka:9092 \
+  --topic nasa_neo_raw --from-beginning --max-messages 5
+
+kafka-console-consumer --bootstrap-server kafka:9092 \
+  --topic celestrak_satcat_raw --from-beginning --max-messages 5
+Copy Code
+8. Streaming – Spark Consumers
+8.1 NEO streaming consumer
+Inside spark-master:
+
+docker exec -it spark-master bash
+
+spark-submit \
+  --master spark://spark-master:7077 \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.postgresql:postgresql:42.7.3 \
+  /opt/bitnami/spark/jobs/streaming/neo_stream_to_bronze.py
+Copy Code
+8.2 CelesTrak streaming consumer
+Inside spark-master:
+
+docker exec -it spark-master bash
+
+spark-submit \
+  --master spark://spark-master:7077 \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.postgresql:postgresql:42.7.3 \
+  /opt/bitnami/spark/jobs/streaming/celestrak_stream_to_bronze.py
+Copy Code
+8.3 Verify streaming writes to Bronze
+psql -h postgres -U space_user -d space_warehouse -c \
+  "SELECT COUNT(*) FROM bronze.nasa_neo_event_raw;"
+
+psql -h postgres -U space_user -d space_warehouse -c \
+  "SELECT COUNT(*) FROM bronze.celestrak_satcat_raw;"
+Copy Code
+9. dbt
+9.1 Test dbt connection
+docker compose run --rm dbt bash
+
+cd /dbt/space_objects
+dbt debug
+Copy Code
+9.2 Run dbt models (later stages)
+dbt run
+dbt test
+Copy Code
+10. Logs & Debugging
+10.1 View logs for a specific service
+docker compose logs airflow-webserver
+docker compose logs kafka
+docker compose logs spark-master
+docker compose logs nasa-neo-batch
+docker compose logs nasa-neo-stream
+Copy Code
+10.2 Follow logs (stream)
+docker compose logs -f airflow-webserver
+Copy Code
+11. Utilities
+11.1 Quick script to open Postgres (optional)
+Create scripts/psql-tools.sh:
+
+#!/usr/bin/env bash
+set -e
+
+docker compose up -d tools
+
+docker compose exec tools sh -c '
+  apk add --no-cache postgresql-client >/dev/null 2>&1 || true
+  echo "Connecting to Postgres at ${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}, db=${POSTGRES_DB:-space_warehouse}, user=${POSTGRES_USER:-space_user}"
+  psql -h "${POSTGRES_HOST:-postgres}" \
+       -p "${POSTGRES_PORT:-5432}" \
+       -U "${POSTGRES_USER:-space_user}" \
+       -d "${POSTGRES_DB:-space_warehouse}"
+'
+Copy Code
+Then:
+
+chmod +x scripts/psql-tools.sh
+./scripts/psql-tools.sh

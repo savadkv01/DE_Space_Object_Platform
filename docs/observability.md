@@ -1,56 +1,128 @@
-Logging
+# Logging, Error Handling & Observability
 
-Standardize on Python logging with structured messages (JSON or key-value).
-Every job (ingestion / Spark / Airflow task) logs:
-Run ID / correlation ID.
-Source & target.
-Record counts, durations, and errors.
-Error Handling
+## Logging
 
-Explicit retry strategy for:
-API calls (backoff).
-Kafka operations.
-DB writes (transient failures).
-Idempotent operations:
-Use natural keys or unique constraints to avoid duplicates when re-running jobs.
-Observability
+- Standardize on **Python logging** with structured messages:
+  - JSON format **or**
+  - Key-value pairs
 
-Define which metrics we care about (even before implementing Prometheus):
-Ingestion throughput, error counts, Kafka lag, DAG duration, data quality stats.
-Plan for:
-Prometheus to scrape exporters (Kafka, Postgres, node, maybe Spark).
-Grafana dashboards focusing on pipeline health.
+- Every job (ingestion, Spark, Airflow task) must log:
+  - Run ID / correlation ID
+  - Source and target
+  - Record counts
+  - Execution duration
+  - Errors and failure reasons
 
+---
 
+## Error Handling
+
+### Retry Strategy
+
+Explicit retry mechanisms are required for:
+
+- **API calls**
+  - Exponential backoff
+- **Kafka operations**
+- **Database writes**
+  - Handle transient failures gracefully
+
+### Idempotency
+
+- All jobs must be **idempotent**
+- Use:
+  - Natural keys **or**
+  - Unique constraints
+- Prevent duplicate records when jobs are re-run
+
+---
+
+## Observability
+
+### Metrics Definition (Pre-Implementation)
+
+Define and agree on key metrics before implementation:
+
+- Ingestion throughput
+- Error counts
+- Kafka consumer lag
+- Airflow DAG duration
+- Data quality statistics
+
+### Metrics Collection (Planned)
+
+- **Prometheus** will scrape exporters for:
+  - Kafka
+  - Postgres
+  - Node (host metrics)
+  - Optional: Spark
+
+- Custom metrics emitted by:
+  - Ingestion jobs
+  - Spark transformations
+
+### Dashboards (Planned)
+
+- **Grafana dashboards** focused on:
+  - Pipeline health
+  - Infrastructure health
+  - Failure detection and trend analysis
+
+---
 
 # Observability Overview (Draft)
 
-- Logging:
-  - Python logging in all services, JSON- or key-value style.
-  - Run-level correlation using run_id.
+## Logging
 
-- Metrics (planned):
-  - Prometheus exporters for:
-    - Postgres
-    - Kafka
-    - Node
-  - Custom metrics from ingestion and Spark jobs.
+- Python logging across all services
+- Structured logs (JSON or key-value)
+- Run-level correlation using `run_id`
 
-- Dashboards (planned):
-  - Grafana for pipeline and infra metrics.
+## Metrics (Planned)
 
+- Prometheus exporters:
+  - Postgres
+  - Kafka
+  - Node
+- Custom application-level metrics from ingestion and Spark jobs
 
-Pipeline run tracking
+## Dashboards (Planned)
 
-meta.pipeline_run fields:
+- Grafana dashboards for:
+  - Pipeline performance
+  - Infrastructure metrics
 
-pipeline_name, status, records_processed, error_message, timestamps.
-How it’s used by batch ingestion:
+---
 
-Each run of nasa-neo-batch / celestrak-batch inserts a row.
-Example query:
+## Pipeline Run Tracking
 
-SELECT pipeline_name, start_time, status, records_processed, error_message
+Pipeline executions are tracked in the metadata table:
+
+### `meta.pipeline_run`
+
+**Fields:**
+- `pipeline_name`
+- `status`
+- `records_processed`
+- `error_message`
+- `timestamps`
+
+### Usage in Batch Ingestion
+
+- Each execution of:
+  - `nasa-neo-batch`
+  - `celestrak-batch`
+- Inserts one row into `meta.pipeline_run`
+
+### Example Query
+
+```sql
+SELECT
+  pipeline_name,
+  start_time,
+  status,
+  records_processed,
+  error_message
 FROM meta.pipeline_run
 ORDER BY start_time DESC
 LIMIT 20;

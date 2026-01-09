@@ -1,15 +1,25 @@
 # Local Environment Requirements
 
-- Docker: >= 20.x
-- Docker Compose: >= 2.x
-- CPU: 4 cores
-- RAM: 8–16GB
-- Disk: >= 20GB free
+## System Requirements
 
-All services run on a single Docker network: `space_net`.
+- **Docker:** >= 20.x
+- **Docker Compose:** >= 2.x
+- **CPU:** 4 cores
+- **RAM:** 8–16 GB
+- **Disk:** >= 20 GB free space
 
-Note that you must connect to space_warehouse:
+---
+
+## Networking
+
+- All services run on a single Docker network:
+  - `space_net`
+
+---
+
+## Database Access
+
+To connect to the Postgres data warehouse (`space_warehouse`), use:
+
+```bash
 psql -h postgres -U space_user -d space_warehouse
-Mention the ingestion image:
-Ingestion jobs run in the `space-objects-ingestion` image, defined under `infra/ingestion/Dockerfile`
-

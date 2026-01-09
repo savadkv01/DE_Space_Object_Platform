@@ -1,84 +1,190 @@
-Space Object Situational Awareness Platform
+# Space Object Situational Awareness Platform
 
-Build an on-prem, Dockerized data platform that ingests and processes near-Earth objects (NEOs) from the NASA NEO API and satellite catalog data from CelesTrak, providing analysts and engineers with curated views of:
+## Overview
 
-Potentially hazardous asteroids approaching Earth, and
-Satellite orbits and catalog changes over time.
-This is positioned as a realistic internal platform for:
+This project builds an **on-prem, Dockerized data platform** that ingests and processes:
 
-Space operations / risk teams: watching potentially hazardous objects.
-Data science teams: modeling orbital dynamics and hazard probabilities.
-Data analytics / BI teams: building dashboards on NEO & satellite trends.
-Platform / data engineering: showcasing a solid, production-minded data platform.
+- **Near-Earth Objects (NEOs)** from the NASA NEO API
+- **Satellite catalog and orbital data** from CelesTrak
 
+The platform provides analysts and engineers with curated views of:
 
-Core Objectives
-Ingest NASA NEO & CelesTrak satellite data via:
+- Potentially hazardous asteroids approaching Earth
+- Satellite orbits and catalog changes over time
 
-Batch (historical + periodic refresh)
-Streaming (near-real-time simulation via Kafka).
-Model data in a Medallion architecture:
+It is positioned as a **realistic internal platform** rather than a toy demo.
 
-Bronze: raw NEO and satellite data (as close to source as possible).
-Silver: cleaned, normalized entities (NEOs, close-approach events, satellites, orbit snapshots).
-Gold: business-friendly tables for reporting and analysis.
-Orchestrate end-to-end pipelines with Airflow:
+---
 
-Batch DAGs (daily NEO, hourly CelesTrak).
-Streaming job supervision.
+## Target Users & Use Cases
+
+### Space Operations / Risk Teams
+- Monitor potentially hazardous near-Earth objects
+- Track close-approach events and hazard indicators
+
+### Data Science Teams
+- Model orbital dynamics
+- Analyze hazard probabilities and time-series behavior
+
+### Data Analytics / BI Teams
+- Build dashboards on:
+  - NEO discovery trends
+  - Close-approach statistics
+  - Satellite population and orbital distributions
+
+### Platform / Data Engineering
+- Demonstrate a solid, production-minded data platform
+- Showcase orchestration, observability, and reliability patterns
+
+---
+
+## Core Objectives
+
+### Data Ingestion
+
+Ingest NASA NEO and CelesTrak satellite data via:
+
+- **Batch**
+  - Historical backfills
+  - Periodic refreshes
+- **Streaming**
+  - Near-real-time simulation using Kafka
+
+---
+
+### Data Modeling (Medallion Architecture)
+
+- **Bronze**
+  - Raw NEO and satellite data
+  - As close to source format as possible
+
+- **Silver**
+  - Cleaned and normalized entities:
+    - NEOs
+    - Close-approach events
+    - Satellites
+    - Orbit snapshots
+
+- **Gold**
+  - Business-friendly, analytics-ready tables
+  - Optimized for BI and reporting
+
+---
+
+### Orchestration
+
+- End-to-end pipelines orchestrated using **Apache Airflow**
+- Includes:
+  - Batch DAGs (daily NASA NEO, hourly CelesTrak)
+  - Streaming job supervision and monitoring
+
+---
+
+### Analytics Enablement
+
 Enable analytics on:
 
-NEO hazard and close-approach statistics.
-Satellite catalog changes and orbit distributions.
-Demonstrate production practices:
+- NEO hazard indicators and close-approach statistics
+- Satellite catalog evolution
+- Orbital regime and distribution analysis
 
-Observability (logs, metrics, structured monitoring).
-Configuration management, error handling, idempotency.
-Clear documentation and diagrams.
-Example Business / Analytical Questions (Gold layer)
-NEOs
+---
 
-How many NEOs approach Earth within X lunar distances per day/week?
-Which upcoming NEOs are flagged as potentially hazardous by NASA?
-Distribution of minimum approach distances and velocities over time.
-Trends of discovered NEOs per month.
-Satellites
+### Production-Style Practices
 
-How many active satellites are in a given orbital regime (LEO/MEO/GEO)?
-How frequently do TLE parameters change for specific satellites?
-Which satellites operated by a given country/operator are in certain inclination ranges?
+Demonstrate realistic platform practices:
 
+- Observability:
+  - Structured logging
+  - Metrics
+  - Monitoring hooks
+- Configuration management
+- Error handling and retries
+- Idempotent pipeline design
+- Clear documentation and architecture diagrams
 
+---
 
-Scope, Constraints & Assumptions
-Hard Constraints
-No cloud services.
-Everything is local, Docker-only.
+## Example Business & Analytical Questions (Gold Layer)
 
-Mandatory technologies in Docker:
+### Near-Earth Objects (NEOs)
 
-Apache Spark (PySpark)
-Apache Kafka (+ Zookeeper or Kraft)
-Apache Airflow
-dbt
-PostgreSQL (metadata + warehouse)
-Optional: Prometheus & Grafana
-Data sources
+- How many NEOs approach Earth within **X lunar distances** per day or week?
+- Which upcoming NEOs are flagged as **potentially hazardous** by NASA?
+- What is the distribution of:
+  - Minimum approach distances
+  - Relative velocities over time?
+- What are the trends in newly discovered NEOs per month?
 
-Primary: NASA NEO API (near-Earth object feed & lookup).
-Secondary: CelesTrak catalog / TLE data (CSV/TXT feeds).
-Assumptions
-Single-node / laptop-scale environment:
+---
 
-~16GB RAM recommended; can be tuned down but with trade-offs.
-Data Volume (rough expectation; precise will be in Stage 3):
+### Satellites
 
-NASA NEO: Hundreds of objects per day; manageable for local Spark.
-CelesTrak: Few tens of thousands of satellites/TLE records; also manageable.
-Network access is available for:
+- How many active satellites exist in each orbital regime:
+  - LEO
+  - MEO
+  - GEO?
+- How frequently do **TLE parameters** change for specific satellites?
+- Which satellites operated by a given country or operator fall within:
+  - Specific inclination ranges?
 
-NASA & CelesTrak APIs from inside Docker containers.
-Out-of-Scope (explicitly)
-Real mission-critical alerting (e.g., notifying real operations centers).
-Highly optimized multi-node cluster tuning.
-Complex access control / enterprise-grade security (we’ll do “good practice” basics).
+---
+
+## Scope, Constraints & Assumptions
+
+### Hard Constraints
+
+- **No cloud services**
+- Everything runs locally using **Docker only**
+
+### Mandatory Technologies (Dockerized)
+
+- Apache Spark (PySpark)
+- Apache Kafka (Zookeeper or KRaft)
+- Apache Airflow
+- dbt
+- PostgreSQL (metadata + warehouse)
+
+**Optional:**
+- Prometheus
+- Grafana
+
+---
+
+### Data Sources
+
+- **Primary:** NASA NEO API  
+  - Near-Earth object feeds and lookups
+- **Secondary:** CelesTrak  
+  - Satellite catalogs and TLE data (CSV/TXT feeds)
+
+---
+
+### Assumptions
+
+#### Environment
+- Single-node / laptop-scale deployment
+- ~16 GB RAM recommended (can be tuned down with trade-offs)
+
+#### Data Volume (Approximate)
+- NASA NEO:
+  - Hundreds of objects per day
+  - Manageable for local Spark
+- CelesTrak:
+  - Tens of thousands of satellite/TLE records
+  - Also manageable locally
+
+#### Networking
+- Outbound network access available from Docker containers to:
+  - NASA APIs
+  - CelesTrak endpoints
+
+---
+
+## Explicitly Out of Scope
+
+- Real mission-critical alerting
+  - (e.g., notifying real operations centers)
+- Highly optimized multi-node cluster tuning
+- Complex access control or enterprise-grade security
+  - Focus is on **good-practice basics**
