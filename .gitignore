@@ -79,6 +79,10 @@ derby.log
 dbt/space_objects/target/
 dbt/space_objects/dbt_packages/
 
+# dbt user-specific config
+dbt/.user.yml
+
+
 # Optional: local notebooks / scratch
 notebooks/.ipynb_checkpoints/
 scratch/
