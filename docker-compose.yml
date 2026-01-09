@@ -81,6 +81,10 @@ services:
       - "8081:8080"   # Spark master web UI
     volumes:
       - ./spark_jobs:/opt/bitnami/spark/jobs
+      - ./spark_jobs/checkpoints:/opt/bitnami/spark/checkpoints
+    env_file:
+      - .env
+      
     networks:
       - space_net
     depends_on:
@@ -248,6 +252,29 @@ services:
       - postgres
 
 
+  nasa-neo-stream:
+    image: space-objects-ingestion
+    container_name: nasa-neo-stream
+    command: ["python", "-m", "services.ingestion.nasa_neo.neo_stream_producer"]
+    env_file:
+      - .env
+    networks:
+      - space_net
+    depends_on:
+      - kafka
+      - postgres
+
+  celestrak-stream:
+    image: space-objects-ingestion
+    container_name: celestrak-stream
+    command: ["python", "-m", "services.ingestion.celestrak.celestrak_stream_producer"]
+    env_file:
+      - .env
+    networks:
+      - space_net
+    depends_on:
+      - kafka
+      - postgres
 
 
 # ---------------------------------------------------------------------------
