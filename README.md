@@ -165,7 +165,7 @@ space-objects-platform/
     data_model.md
     observability.md
     troubleshooting_infrastructure.md
-
+```
 
 ## 5. Prerequisites
 
