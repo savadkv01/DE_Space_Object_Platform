@@ -1,0 +1,22 @@
+name: "space_objects"
+version: "1.0.0"
+config-version: 2
+
+profile: "space_objects"
+
+model-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+models:
+  space_objects:
+    +schema: "silver"
+    bronze:
+      +schema: "bronze"
+    silver:
+      +schema: "silver"
+    gold:
+      +schema: "gold"

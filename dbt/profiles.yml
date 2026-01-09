@@ -1,0 +1,12 @@
+space_objects:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: postgres
+      user: space_user
+      password: space_password
+      port: 5432
+      dbname: space_warehouse
+      schema: silver
+      threads: 4

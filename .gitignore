@@ -1,0 +1,105 @@
+############################
+# OS & Editor junk
+############################
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# VS Code / JetBrains
+.vscode/
+.idea/
+
+# General
+*.swp
+*.swo
+
+
+############################
+# Python
+############################
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python tooling
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+
+############################
+# Environment & Secrets
+############################
+
+# Real env; keep .env.example
+.env
+.env.*
+
+# Airflow-specific
+airflow/airflow.cfg
+airflow/airflow.db
+airflow/unittests.cfg
+
+
+############################
+# Project-specific generated data
+############################
+
+# Postgres data volume (if ever mounted to host; usually it's a Docker volume)
+postgres_data/
+
+# Airflow logs & temporary files
+airflow/logs/
+airflow/__pycache__/
+airflow/dags/__pycache__/
+airflow/plugins/__pycache__/
+
+# Spark logs & local metadata (if you mount these later)
+spark/logs/
+metastore_db/
+derby.log
+
+# dbt build artifacts
+dbt/space_objects/target/
+dbt/space_objects/dbt_packages/
+
+# Optional: local notebooks / scratch
+notebooks/.ipynb_checkpoints/
+scratch/
+
+
+############################
+# Docker & build artifacts
+############################
+
+# Docker build context noise (if any)
+**/.dockerignore
+*.log
+
+# Local compose override files
+docker-compose.override.yml
+
+
+############################
+# Miscellaneous
+############################
+
+# Generated docs / site (if you add mkdocs or similar later)
+site/
+docs/_build/

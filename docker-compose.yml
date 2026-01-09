@@ -1,0 +1,194 @@
+version: "3.9"
+
+services:
+  # ---------------------------------------------------------------------------
+  # Postgres (warehouse + metadata)
+  # ---------------------------------------------------------------------------
+  postgres:
+    build:
+      context: ./infra/postgres
+    container_name: postgres
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - space_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-space_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Simple utility container for network / DB tests
+  tools:
+    image: alpine:3.19
+    container_name: tools
+    command: ["sh", "-c", "sleep 3600"]
+    networks:
+      - space_net
+    depends_on:
+      - postgres
+
+  # ---------------------------------------------------------------------------
+  # Kafka + Zookeeper
+  # ---------------------------------------------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - space_net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    env_file:
+      - ./infra/kafka/docker-compose.env
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    networks:
+      - space_net
+
+  # Kafka CLI tools for topic/message testing
+  kafka-tools:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka-tools
+    command: ["sleep", "3600"]
+    networks:
+      - space_net
+    depends_on:
+      - kafka
+
+  # ---------------------------------------------------------------------------
+  # Spark (master + worker)
+  # ---------------------------------------------------------------------------
+  spark-master:
+    build:
+      context: ./infra/spark
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+    ports:
+      - "7077:7077"   # Spark master
+      - "8081:8080"   # Spark master web UI
+    volumes:
+      - ./spark_jobs:/opt/bitnami/spark/jobs
+    networks:
+      - space_net
+    depends_on:
+      - postgres
+      - kafka
+
+  spark-worker:
+    build:
+      context: ./infra/spark
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    volumes:
+      - ./spark_jobs:/opt/bitnami/spark/jobs
+    networks:
+      - space_net
+    depends_on:
+      - spark-master
+
+  # ---------------------------------------------------------------------------
+  # Airflow (webserver + scheduler, LocalExecutor)
+  # ---------------------------------------------------------------------------
+  airflow-webserver:
+    build:
+      context: ./infra/airflow
+    container_name: airflow-webserver
+    env_file:
+      - .env
+      - ./infra/airflow/airflow.env
+    command: ["webserver"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    networks:
+      - space_net
+
+  airflow-scheduler:
+    build:
+      context: ./infra/airflow
+    container_name: airflow-scheduler
+    env_file:
+      - .env
+      - ./infra/airflow/airflow.env
+    command: ["scheduler"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    networks:
+      - space_net
+
+  # ---------------------------------------------------------------------------
+  # dbt (Postgres target)
+  # ---------------------------------------------------------------------------
+  dbt:
+    build:
+      context: ./infra/dbt
+    container_name: dbt
+    env_file:
+      - .env
+    environment:
+      - DBT_PROFILES_DIR=/dbt
+    working_dir: /dbt/space_objects
+    volumes:
+      - ./dbt:/dbt
+    networks:
+      - space_net
+    depends_on:
+      - postgres
+
+  # ---------------------------------------------------------------------------
+  # Monitoring: Prometheus + Grafana (skeleton)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: prometheus
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - space_net
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - space_net
+    depends_on:
+      - prometheus
+
+# ---------------------------------------------------------------------------
+# Networks & Volumes
+# ---------------------------------------------------------------------------
+networks:
+  space_net:
+
+volumes:
+  postgres_data:
