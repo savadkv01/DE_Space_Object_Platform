@@ -184,6 +184,72 @@ services:
     depends_on:
       - prometheus
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://space_user:space_password@postgres:5432/space_warehouse?sslmode=disable"
+    networks:
+      - space_net
+    depends_on:
+      - postgres
+
+  
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    container_name: kafka-exporter
+    command:
+      - "--kafka.server=kafka:9092"
+    networks:
+      - space_net
+    depends_on:
+      - kafka
+
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: node-exporter
+    pid: "host"
+    network_mode: "host"
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: ./infra/ingestion/Dockerfile
+    image: space-objects-ingestion
+    networks:
+      - space_net
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+
+  nasa-neo-batch:
+    image: space-objects-ingestion
+    container_name: nasa-neo-batch
+    command: ["python", "-m", "services.ingestion.nasa_neo.neo_batch_ingestor"]
+    env_file:
+      - .env
+    networks:
+      - space_net
+    depends_on:
+      - postgres
+
+  
+  celestrak-batch:
+    image: space-objects-ingestion
+    container_name: celestrak-batch
+    command: ["python", "-m", "services.ingestion.celestrak.celestrak_batch_ingestor"]
+    env_file:
+      - .env
+    networks:
+      - space_net
+    depends_on:
+      - postgres
+
+
+
+
 # ---------------------------------------------------------------------------
 # Networks & Volumes
 # ---------------------------------------------------------------------------

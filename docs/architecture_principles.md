@@ -17,3 +17,14 @@ Both batch and streaming paths are first-class citizens.
 Postgres as single data warehouse:
 Avoids multiple storage systems to keep project focused.
 Single-node deployment optimized for clarity, not max performance.
+
+Bronze ingestion status
+
+Confirm that these Bronze tables are now populated via batch ingestion:
+
+bronze.nasa_neo_event_raw
+bronze.celestrak_satcat_raw
+Note that:
+
+JSON fields in these tables (estimated_diameter, relative_velocity, etc.) are stored as jsonb.
+They will be normalized into Silver by Spark in later stages.

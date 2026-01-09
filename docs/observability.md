@@ -38,3 +38,19 @@ Grafana dashboards focusing on pipeline health.
 
 - Dashboards (planned):
   - Grafana for pipeline and infra metrics.
+
+
+Pipeline run tracking
+
+meta.pipeline_run fields:
+
+pipeline_name, status, records_processed, error_message, timestamps.
+How it’s used by batch ingestion:
+
+Each run of nasa-neo-batch / celestrak-batch inserts a row.
+Example query:
+
+SELECT pipeline_name, start_time, status, records_processed, error_message
+FROM meta.pipeline_run
+ORDER BY start_time DESC
+LIMIT 20;
