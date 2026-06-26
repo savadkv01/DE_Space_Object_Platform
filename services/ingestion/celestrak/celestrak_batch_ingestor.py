@@ -1,7 +1,7 @@
 import csv
 from datetime import date
 from io import StringIO
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from services.common.db_client import DbClient
 from services.ingestion.base_ingestion import BaseBatchIngestionJob
@@ -9,8 +9,19 @@ from services.ingestion.celestrak.celestrak_client import CelesTrakClient
 
 
 class CelesTrakSatcatBatchIngestionJob(BaseBatchIngestionJob):
-  def __init__(self, group: str = "active"):
-      super().__init__(pipeline_name="celestrak_satcat_batch_ingestion")
+  def __init__(
+      self,
+      group: str = "active",
+      triggered_by: str = "manual",
+      dag_id: Optional[str] = None,
+      task_id: Optional[str] = None,
+  ):
+      super().__init__(
+          pipeline_name="celestrak_satcat_batch_ingestion",
+          triggered_by=triggered_by,
+          dag_id=dag_id,
+          task_id=task_id,
+      )
       self.group = group
       self.client = CelesTrakClient()
       self.db = DbClient()
@@ -39,6 +50,24 @@ class CelesTrakSatcatBatchIngestionJob(BaseBatchIngestionJob):
       return rows
 
   def load(self, rows: Iterable[Mapping[str, Any]]) -> int:
+      snapshot_date = date.today().isoformat()
+
+      # Idempotent: skip if a snapshot for this group+date already exists
+      existing = self.db.execute(
+          """
+          SELECT COUNT(*) AS cnt FROM bronze.celestrak_satcat_raw
+          WHERE snapshot_group = %(group)s AND snapshot_date = %(date)s
+          """,
+          {"group": self.group, "date": snapshot_date},
+          fetchone=True,
+      )
+      if existing and (existing.get("cnt") or 0) > 0:
+          self.logger.info(
+              "SATCAT snapshot already ingested, skipping",
+              extra={"snapshot_group": self.group, "snapshot_date": snapshot_date},
+          )
+          return 0
+
       sql = """
       INSERT INTO bronze.celestrak_satcat_raw (
           snapshot_group,

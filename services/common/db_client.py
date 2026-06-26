@@ -1,21 +1,12 @@
 import os
 from contextlib import contextmanager
-from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Optional
 
 import psycopg2
 import psycopg2.extras
 from psycopg2.extras import Json
 
-
-
-@dataclass
-class PostgresConfig:
-  host: str
-  port: int
-  user: str
-  password: str
-  db: str
+from services.common.config_loader import PostgresConfig
 
 
 def load_pg_config() -> PostgresConfig:

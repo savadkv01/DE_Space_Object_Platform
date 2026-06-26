@@ -1,0 +1,16 @@
+# CelesTrak SATCAT ingestion configuration
+# Values here are defaults; env vars always take precedence.
+
+batch:
+  # Which satellite group to pull ('active', 'all', 'analyst', 'tdrss', etc.)
+  default_group: active
+
+streaming:
+  # How often the stream producer polls CelesTrak (seconds)
+  poll_interval_sec: 600
+  kafka_topic: celestrak_satcat_raw
+
+client:
+  timeout_sec: 20
+  retry_total: 3
+  retry_backoff_factor: 1.5

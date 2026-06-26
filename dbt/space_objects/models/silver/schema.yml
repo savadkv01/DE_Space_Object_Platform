@@ -1,0 +1,131 @@
+version: 2
+
+models:
+  - name: neo
+    description: "Semantic view over silver.neo dimension table"
+    columns:
+      - name: neo_sk
+        description: "Surrogate key for NEO"
+        tests:
+          - not_null
+          - unique
+
+      - name: neo_id
+        description: "NASA NEO identifier"
+        tests:
+          - not_null
+          - unique
+
+      - name: name
+        description: "NEO name"
+
+      - name: is_potentially_hazardous_asteroid
+        description: "True if NASA marks this object as potentially hazardous"
+        tests:
+          - not_null
+
+      - name: first_seen_date
+        description: "Earliest close approach date for this NEO"
+        tests:
+          - not_null
+
+      - name: last_seen_date
+        description: "Latest close approach date for this NEO"
+        tests:
+          - not_null
+
+  - name: neo_close_approach
+    description: "Semantic view over silver.neo_close_approach fact table"
+    columns:
+      - name: approach_sk
+        description: "Surrogate key for the close approach"
+        tests:
+          - not_null
+          - unique
+
+      - name: neo_sk
+        description: "Foreign key to silver.neo.neo_sk"
+        tests:
+          - not_null
+
+      - name: neo_id
+        description: "NASA NEO id (denormalised for convenience)"
+        tests:
+          - not_null
+
+      - name: close_approach_date
+        description: "Date of the close approach"
+        tests:
+          - not_null
+
+      - name: rel_velocity_km_s
+        description: "Relative velocity in km/s"
+
+      - name: miss_distance_km
+        description: "Closest distance in km"
+
+  - name: satcat_satellite
+    description: "Semantic view over silver.satcat_satellite dimension table"
+    columns:
+      - name: satellite_sk
+        description: "Surrogate key for satellite"
+        tests:
+          - not_null
+          - unique
+
+      - name: norad_cat_id
+        description: "NORAD catalog identifier"
+        tests:
+          - not_null
+          - unique
+
+      - name: object_name
+        description: "Satellite name"
+        tests:
+          - not_null
+
+      - name: first_seen_date
+        description: "First snapshot date the satellite appeared"
+        tests:
+          - not_null
+
+      - name: last_seen_date
+        description: "Last snapshot date the satellite appeared"
+        tests:
+          - not_null
+
+  - name: satcat_orbit_snapshot
+    description: "Semantic view over silver.satcat_orbit_snapshot fact table"
+    columns:
+      - name: orbit_snapshot_sk
+        description: "Surrogate key for orbit snapshot"
+        tests:
+          - not_null
+          - unique
+
+      - name: satellite_sk
+        description: "Foreign key to satcat_satellite.satellite_sk"
+        tests:
+          - not_null
+
+      - name: norad_cat_id
+        description: "NORAD catalog identifier"
+        tests:
+          - not_null
+
+      - name: snapshot_date
+        description: "Date of the orbit snapshot"
+        tests:
+          - not_null
+
+      - name: period_minutes
+        description: "Orbital period in minutes"
+
+      - name: inclination_deg
+        description: "Inclination in degrees"
+
+      - name: apogee_km
+        description: "Apogee in km"
+
+      - name: perigee_km
+        description: "Perigee in km"

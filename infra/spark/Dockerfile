@@ -1,11 +1,14 @@
-FROM bitnami/spark:latest
+FROM apache/spark:3.5.5-scala2.12-java17-python3-ubuntu
 
-# Ensure Python and common libs are available
 USER root
-RUN install_packages python3 python3-pip && \
-    pip3 install --no-cache-dir psycopg2-binary requests
 
-# Optional: copy spark-defaults.conf
-COPY spark-defaults.conf /opt/bitnami/spark/conf/spark-defaults.conf
+# Python packages needed for Spark job drivers
+RUN pip3 install --no-cache-dir psycopg2-binary requests
 
-USER 1001
+# PostgreSQL JDBC driver — placed in Spark's jars directory so it's on classpath
+RUN curl -L -o /opt/spark/jars/postgresql-42.7.3.jar \
+    https://jdbc.postgresql.org/download/postgresql-42.7.3.jar
+
+COPY spark-defaults.conf /opt/spark/conf/spark-defaults.conf
+
+USER spark

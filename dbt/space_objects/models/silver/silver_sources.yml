@@ -1,0 +1,14 @@
+# dbt/space_objects/models/silver/silver_sources.yml
+
+version: 2
+
+sources:
+  - name: silver
+    database: "{{ target.dbname }}"
+    schema: silver
+    tables:
+      - name: neo
+      - name: neo_close_approach
+      - name: satcat_satellite
+      - name: satcat_orbit_snapshot
+

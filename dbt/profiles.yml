@@ -8,5 +8,5 @@ space_objects:
       password: space_password
       port: 5432
       dbname: space_warehouse
-      schema: silver
+      schema: public
       threads: 4

@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from services.common.db_client import DbClient
 from services.ingestion.base_ingestion import BaseBatchIngestionJob
@@ -7,8 +7,20 @@ from services.ingestion.nasa_neo.neo_client import NasaNeoClient
 
 
 class NasaNeoBatchIngestionJob(BaseBatchIngestionJob):
-  def __init__(self, start_date: str, end_date: str | None = None):
-      super().__init__(pipeline_name="nasa_neo_batch_ingestion")
+  def __init__(
+      self,
+      start_date: str,
+      end_date: str | None = None,
+      triggered_by: str = "manual",
+      dag_id: Optional[str] = None,
+      task_id: Optional[str] = None,
+  ):
+      super().__init__(
+          pipeline_name="nasa_neo_batch_ingestion",
+          triggered_by=triggered_by,
+          dag_id=dag_id,
+          task_id=task_id,
+      )
       self.start_date = start_date
       self.end_date = end_date or start_date
       self.client = NasaNeoClient()

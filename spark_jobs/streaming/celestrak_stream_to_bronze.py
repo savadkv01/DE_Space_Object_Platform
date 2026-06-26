@@ -22,7 +22,7 @@ def get_spark() -> SparkSession:
         .master("spark://spark-master:7077")
         .config(
             "spark.jars.packages",
-            "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0"
+            "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5"
             ",org.postgresql:postgresql:42.7.3",
         )
         .getOrCreate()

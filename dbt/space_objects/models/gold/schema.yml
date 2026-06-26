@@ -1,0 +1,144 @@
+version: 2
+
+models:
+  - name: neo_daily_activity
+    description: "Daily counts of NEO close approaches and hazardous subset"
+    columns:
+      - name: close_approach_date
+        description: "Date of the close approaches"
+        tests:
+          - not_null
+          - unique
+
+      - name: total_approaches
+        description: "Total number of close approaches that day"
+        tests:
+          - not_null
+
+      - name: unique_objects
+        description: "Distinct NEOs that had close approaches that day"
+        tests:
+          - not_null
+
+      - name: hazardous_approaches
+        description: "Number of hazardous NEO close approaches that day"
+        tests:
+          - not_null
+
+  - name: neo_hazard_summary
+    description: "Per-NEO hazard summary including closest approach and activity window"
+    columns:
+      - name: neo_id
+        description: "NASA NEO id"
+        tests:
+          - not_null
+          - unique
+
+      - name: name
+        description: "NEO name"
+
+      - name: is_hazardous
+        description: "True if this NEO is considered hazardous"
+        tests:
+          - not_null
+
+      - name: total_approaches
+        description: "Total number of recorded close approaches"
+        tests:
+          - not_null
+
+      - name: closest_approach_km
+        description: "Minimum miss distance in km"
+        tests:
+          - not_null
+
+  - name: satcat_orbit_summary
+    description: "Aggregated orbital stats per satellite"
+    columns:
+      - name: norad_cat_id
+        description: "NORAD catalog identifier"
+        tests:
+          - not_null
+          - unique
+
+      - name: object_name
+        description: "Satellite name"
+        tests:
+          - not_null
+
+      - name: snapshot_count
+        description: "Number of orbit snapshots for this satellite"
+        tests:
+          - not_null
+
+  - name: ai_neo_features
+    description: "Feature table for ML on NEO close approaches and hazard prediction"
+    columns:
+      - name: approach_sk
+        description: "Surrogate key for the close approach (feature row id)"
+        tests:
+          - not_null
+          - unique
+
+      - name: neo_id
+        description: "NEO id"
+        tests:
+          - not_null
+
+      - name: close_approach_date
+        description: "Date of close approach"
+        tests:
+          - not_null
+
+      - name: rel_velocity_km_s
+        description: "Relative velocity in km/s"
+        tests:
+          - not_null
+
+      - name: miss_distance_km
+        description: "Closest approach distance in km"
+        tests:
+          - not_null
+
+      - name: absolute_magnitude_h
+        description: "Absolute magnitude of the NEO"
+        tests:
+          - not_null
+
+      - name: is_hazardous_label
+        description: "Binary label: 1 if NEO is hazardous, else 0"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+
+  - name: ai_satcat_features
+    description: "Feature table for ML on satellite orbits and metadata"
+    columns:
+      - name: orbit_snapshot_sk
+        description: "Surrogate key for the orbit snapshot (feature row id)"
+        tests:
+          - not_null
+          - unique
+
+      - name: norad_cat_id
+        description: "NORAD catalog id"
+        tests:
+          - not_null
+
+      - name: snapshot_date
+        description: "Snapshot date"
+        tests:
+          - not_null
+
+      - name: period_minutes
+        description: "Orbital period in minutes"
+
+      - name: inclination_deg
+        description: "Inclination in degrees"
+
+      - name: apogee_km
+        description: "Apogee in km"
+
+      - name: perigee_km
+        description: "Perigee in km"

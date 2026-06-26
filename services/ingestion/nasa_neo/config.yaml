@@ -1,0 +1,20 @@
+# NASA NEO ingestion configuration
+# Values here are defaults; env vars always take precedence.
+
+batch:
+  # Default lookback window when no explicit date is supplied (days)
+  default_lookback_days: 1
+  # Maximum days per NeoWs API request (API hard cap is 7)
+  max_days_per_request: 7
+  # Seconds to pause between chunked requests during a backfill
+  inter_request_delay_sec: 1.0
+
+streaming:
+  # How often the stream producer polls the NASA API (seconds)
+  poll_interval_sec: 300
+  kafka_topic: nasa_neo_raw
+
+client:
+  timeout_sec: 15
+  retry_total: 3
+  retry_backoff_factor: 1.5

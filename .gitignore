@@ -78,6 +78,10 @@ derby.log
 # dbt build artifacts
 dbt/space_objects/target/
 dbt/space_objects/dbt_packages/
+dbt/space_objects/logs/
+
+# Spark streaming checkpoints (local state — not portable)
+spark_jobs/checkpoints/
 
 # dbt user-specific config
 dbt/.user.yml

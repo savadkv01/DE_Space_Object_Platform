@@ -1,22 +1,32 @@
+# dbt/space_objects/dbt_project.yml
+
 name: "space_objects"
 version: "1.0.0"
-config-version: 2
-
 profile: "space_objects"
 
+config-version: 2
+
 model-paths: ["models"]
-analysis-paths: ["analysis"]
-test-paths: ["tests"]
-seed-paths: ["seeds"]
 macro-paths: ["macros"]
+test-paths: ["tests"]
 snapshot-paths: ["snapshots"]
+seed-paths: ["seeds"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
 
 models:
   space_objects:
-    +schema: "silver"
+    +materialized: view
+
     bronze:
-      +schema: "bronze"
+      +schema: bronze
+      +materialized: view      # thin semantic views on raw bronze if needed
+
     silver:
-      +schema: "silver"
+      +schema: silver
+      +materialized: ephemeral  # inline CTEs; physical tables managed by Spark
+
     gold:
-      +schema: "gold"
+      +schema: gold
+      +materialized: table     # final marts / AI-ready tables

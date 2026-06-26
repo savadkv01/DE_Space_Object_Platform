@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ---------------------------------------------------------------------------
   # Postgres (warehouse + metadata)
@@ -7,11 +5,10 @@ services:
   postgres:
     build:
       context: ./infra/postgres
-    container_name: postgres
     env_file:
       - .env
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -25,7 +22,6 @@ services:
   # Simple utility container for network / DB tests
   tools:
     image: alpine:3.19
-    container_name: tools
     command: ["sh", "-c", "sleep 3600"]
     networks:
       - space_net
@@ -37,7 +33,6 @@ services:
   # ---------------------------------------------------------------------------
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
-    container_name: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -46,20 +41,23 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: kafka
     env_file:
       - ./infra/kafka/docker-compose.env
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
+      - "19092:9092"
     networks:
       - space_net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
   # Kafka CLI tools for topic/message testing
   kafka-tools:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: kafka-tools
     command: ["sleep", "3600"]
     networks:
       - space_net
@@ -72,34 +70,34 @@ services:
   spark-master:
     build:
       context: ./infra/spark
-    container_name: spark-master
-    environment:
-      - SPARK_MODE=master
-      - SPARK_MASTER_HOST=spark-master
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master", "--host", "spark-master"]
     ports:
       - "7077:7077"   # Spark master
       - "8081:8080"   # Spark master web UI
     volumes:
-      - ./spark_jobs:/opt/bitnami/spark/jobs
-      - ./spark_jobs/checkpoints:/opt/bitnami/spark/checkpoints
+      - ./spark_jobs:/opt/spark/jobs
+      - ./spark_jobs/checkpoints:/opt/spark/checkpoints
     env_file:
       - .env
-      
     networks:
       - space_net
     depends_on:
-      - postgres
-      - kafka
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   spark-worker:
     build:
       context: ./infra/spark
-    container_name: spark-worker
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
     volumes:
-      - ./spark_jobs:/opt/bitnami/spark/jobs
+      - ./spark_jobs:/opt/spark/jobs
     networks:
       - space_net
     depends_on:
@@ -111,7 +109,6 @@ services:
   airflow-webserver:
     build:
       context: ./infra/airflow
-    container_name: airflow-webserver
     env_file:
       - .env
       - ./infra/airflow/airflow.env
@@ -125,13 +122,17 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
+      - ./services:/opt/airflow/services
+      - ./spark_jobs:/opt/airflow/spark_jobs
+      - ./dbt:/dbt
+    environment:
+      PYTHONPATH: /opt/airflow
     networks:
       - space_net
 
   airflow-scheduler:
     build:
       context: ./infra/airflow
-    container_name: airflow-scheduler
     env_file:
       - .env
       - ./infra/airflow/airflow.env
@@ -143,6 +144,11 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
+      - ./services:/opt/airflow/services
+      - ./spark_jobs:/opt/airflow/spark_jobs
+      - ./dbt:/dbt
+    environment:
+      PYTHONPATH: /opt/airflow
     networks:
       - space_net
 
@@ -152,7 +158,6 @@ services:
   dbt:
     build:
       context: ./infra/dbt
-    container_name: dbt
     env_file:
       - .env
     environment:
@@ -170,7 +175,6 @@ services:
   # ---------------------------------------------------------------------------
   prometheus:
     image: prom/prometheus:v2.50.0
-    container_name: prometheus
     volumes:
       - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
@@ -180,7 +184,6 @@ services:
 
   grafana:
     image: grafana/grafana:10.4.0
-    container_name: grafana
     ports:
       - "3000:3000"
     networks:
@@ -190,7 +193,6 @@ services:
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
-    container_name: postgres-exporter
     environment:
       DATA_SOURCE_NAME: "postgresql://space_user:space_password@postgres:5432/space_warehouse?sslmode=disable"
     networks:
@@ -201,7 +203,6 @@ services:
   
   kafka-exporter:
     image: danielqsj/kafka-exporter:v1.7.0
-    container_name: kafka-exporter
     command:
       - "--kafka.server=kafka:9092"
     networks:
@@ -212,9 +213,10 @@ services:
 
   node-exporter:
     image: prom/node-exporter:v1.8.1
-    container_name: node-exporter
-    pid: "host"
-    network_mode: "host"
+    ports:
+      - "9100:9100"
+    networks:
+      - space_net
 
   ingestion:
     build:
@@ -230,7 +232,6 @@ services:
 
   nasa-neo-batch:
     image: space-objects-ingestion
-    container_name: nasa-neo-batch
     command: ["python", "-m", "services.ingestion.nasa_neo.neo_batch_ingestor"]
     env_file:
       - .env
@@ -242,7 +243,6 @@ services:
   
   celestrak-batch:
     image: space-objects-ingestion
-    container_name: celestrak-batch
     command: ["python", "-m", "services.ingestion.celestrak.celestrak_batch_ingestor"]
     env_file:
       - .env
@@ -254,27 +254,63 @@ services:
 
   nasa-neo-stream:
     image: space-objects-ingestion
-    container_name: nasa-neo-stream
     command: ["python", "-m", "services.ingestion.nasa_neo.neo_stream_producer"]
     env_file:
       - .env
     networks:
       - space_net
     depends_on:
-      - kafka
-      - postgres
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 
   celestrak-stream:
     image: space-objects-ingestion
-    container_name: celestrak-stream
     command: ["python", "-m", "services.ingestion.celestrak.celestrak_stream_producer"]
     env_file:
       - .env
     networks:
       - space_net
     depends_on:
-      - kafka
-      - postgres
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Synthetic data services (use SYNTHETIC_ENABLED=true to activate)
+  # ---------------------------------------------------------------------------
+
+  # One-shot seeder: seeds bronze tables and exits.
+  # Run with: docker compose run --rm synthetic-seeder --neo 500 --satcat 1000
+  synthetic-seeder:
+    image: space-objects-ingestion
+    command: ["python", "-m", "services.synthetic.batch_seeder", "--neo", "200", "--satcat", "300"]
+    env_file:
+      - .env
+    networks:
+      - space_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - synthetic
+
+  # Continuous synthetic Kafka producer for streaming load tests.
+  # Run with: docker compose --profile synthetic up synthetic-stream
+  synthetic-stream:
+    image: space-objects-ingestion
+    command: ["python", "-m", "services.synthetic.stream_producer", "--neo-rate", "3", "--satcat-rate", "5", "--interval", "5"]
+    env_file:
+      - .env
+    networks:
+      - space_net
+    depends_on:
+      kafka:
+        condition: service_healthy
+    profiles:
+      - synthetic
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw bronze tables populated by ingestion services"
+    tables:
+      - name: nasa_neo_feed_raw
+        description: "Raw NASA NEO feed responses"
+      - name: nasa_neo_event_raw
+        description: "Raw NEO events, one row per close approach"
+      - name: celestrak_satcat_raw
+        description: "Raw CelesTrak SATCAT records"
+      - name: celestrak_tle_raw
+        description: "Raw CelesTrak TLE blocks"
