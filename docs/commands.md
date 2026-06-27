@@ -91,6 +91,10 @@ docker exec space_object_platform-spark-master-1 bash -c \
 # CelesTrak bronze → silver
 docker exec space_object_platform-spark-master-1 bash -c \
   "$SPARK_ENV && $SPARK_SUBMIT /opt/spark/jobs/bronze_to_silver_celestrak.py"
+
+# Spark ↔ Postgres connectivity test
+docker exec space_object_platform-spark-master-1 bash -c \
+  "$SPARK_ENV && $SPARK_SUBMIT /opt/spark/jobs/common/test_spark_connectivity.py"
 ```
 
 ---
@@ -149,6 +153,10 @@ docker exec space_object_platform-kafka-1 \
 docker exec space_object_platform-kafka-1 \
   kafka-topics --bootstrap-server kafka:9092 --create \
   --topic nasa_neo_raw --partitions 1 --replication-factor 1
+
+# Produce messages interactively (type, then Ctrl+C to exit)
+docker exec -it space_object_platform-kafka-1 \
+  kafka-console-producer --broker-list kafka:9092 --topic nasa_neo_raw
 
 # Consume messages (latest)
 docker exec space_object_platform-kafka-1 \
@@ -223,4 +231,56 @@ docker exec -i space_object_platform-postgres-1 \
 # Full reset (removes all data)
 docker compose down -v
 docker compose up -d --build
+```
+
+---
+
+## 11. Airflow First-Time Setup
+
+```bash
+# Initialize Airflow metadata DB (first time only)
+docker compose run --rm airflow-webserver airflow db init
+
+# Create admin user (admin / admin)
+docker compose run --rm airflow-webserver airflow users create \
+  --username admin --firstname Admin --lastname User \
+  --role Admin --email admin@example.com --password admin
+```
+
+---
+
+## 12. Utility: psql via tools container
+
+Connect to Postgres from inside the Docker network without exposing ports.
+
+```bash
+docker compose up -d tools
+
+docker compose exec tools sh -c '
+  apk add --no-cache postgresql-client >/dev/null 2>&1 || true
+  psql -h "${POSTGRES_HOST:-postgres}" \
+       -p "${POSTGRES_PORT:-5432}" \
+       -U "${POSTGRES_USER:-space_user}" \
+       -d "${POSTGRES_DB:-space_warehouse}"
+'
+```
+
+Optional helper script `scripts/psql-tools.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -e
+docker compose up -d tools
+docker compose exec tools sh -c '
+  apk add --no-cache postgresql-client >/dev/null 2>&1 || true
+  psql -h "${POSTGRES_HOST:-postgres}" \
+       -p "${POSTGRES_PORT:-5432}" \
+       -U "${POSTGRES_USER:-space_user}" \
+       -d "${POSTGRES_DB:-space_warehouse}"
+'
+```
+
+```bash
+chmod +x scripts/psql-tools.sh
+./scripts/psql-tools.sh
 ```
